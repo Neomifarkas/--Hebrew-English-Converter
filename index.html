@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hebrew-English Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .input-section, .output-section {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        #output {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .convert-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .copy-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .clear-btn {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .clear-btn:hover {
+            background: #5a6268;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .detection-info {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Hebrew ↔ English Converter</h1>
+        
+        <div class="input-section">
+            <label for="input">Paste your text here:</label>
+            <textarea id="input" placeholder="Type or paste your text that was typed in the wrong language..."></textarea>
+        </div>
+        
+        <div class="detection-info" id="detectionInfo"></div>
+        
+        <div class="button-group">
+            <button class="convert-btn" onclick="convertText()">Convert Text</button>
+            <button class="copy-btn" onclick="copyToClipboard()">Copy Result</button>
+            <button class="clear-btn" onclick="clearAll()">Clear All</button>
+        </div>
+        
+        <div class="output-section">
+            <label for="output">Converted text:</label>
+            <textarea id="output" readonly placeholder="Your converted text will appear here..."></textarea>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        // Hebrew to English mapping (based on your exact keyboard layout)
+        const hebrewToEnglish = {
+            'א': 't', 'ב': 'c', 'ג': 'd', 'ד': 's', 'ה': 'v', 'ו': 'u', 'ז': 'z', 'ח': 'j', 'ט': 'y', 'י': 'h',
+            'כ': 'f', 'ל': 'k', 'מ': 'n', 'נ': 'b', 'ס': 'x', 'ע': 'g', 'פ': 'p', 'צ': 'm', 'ק': 'e', 'ר': 'r',
+            'ש': 'a', 'ת': ',', "'": 'w', '/': 'q', 'ף': ';', 'ץ': '.', 'ן': 'i', 'ם': 'o', 'ך': 'l', ',': "'"
+        };
+        
+        // English to Hebrew mapping (reverse of above)
+        const englishToHebrew = {
+            't': 'א', 'c': 'ב', 'd': 'ג', 's': 'ד', 'v': 'ה', 'u': 'ו', 'z': 'ז', 'j': 'ח', 'y': 'ט', 'h': 'י',
+            'f': 'כ', 'k': 'ל', 'n': 'מ', 'b': 'נ', 'x': 'ס', 'g': 'ע', 'p': 'פ', 'm': 'צ', 'e': 'ק', 'r': 'ר',
+            'a': 'ש', ',': 'ת', 'w': "'", 'q': '/', ';': 'ף', '.': 'ץ', 'i': 'ן', 'o': 'ם', 'l': 'ך', "'": ','
+        };
+        
+        function detectLanguage(text) {
+            const hebrewChars = text.match(/[\u0590-\u05FF]/g);
+            const englishChars = text.match(/[a-zA-Z]/g);
+            
+            const hebrewCount = hebrewChars ? hebrewChars.length : 0;
+            const englishCount = englishChars ? englishChars.length : 0;
+            
+            if (hebrewCount > englishCount) {
+                return 'hebrew';
+            } else if (englishCount > hebrewCount) {
+                return 'english';
+            } else {
+                return 'unknown';
+            }
+        }
+        
+        function convertText() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            const detectionInfo = document.getElementById('detectionInfo');
+            
+            if (!input.trim()) {
+                status.textContent = 'Please enter some text to convert.';
+                return;
+            }
+            
+            const language = detectLanguage(input);
+            let converted = '';
+            
+            if (language === 'hebrew') {
+                detectionInfo.textContent = '🔍 Detected: Hebrew → Converting to English';
+                converted = convertHebrewToEnglish(input);
+            } else if (language === 'english') {
+                detectionInfo.textContent = '🔍 Detected: English → Converting to Hebrew';
+                converted = convertEnglishToHebrew(input);
+            } else {
+                detectionInfo.textContent = '⚠️ Could not detect language clearly';
+                status.textContent = 'Unable to detect the primary language. Try typing more text.';
+                return;
+            }
+            
+            output.value = converted;
+            status.textContent = '✅ Text converted successfully!';
+        }
+        
+        function convertHebrewToEnglish(text) {
+            return text.split('').map(char => {
+                const lower = char.toLowerCase();
+                return hebrewToEnglish[lower] || char;
+            }).join('');
+        }
+        
+        function convertEnglishToHebrew(text) {
+            return text.split('').map(char => {
+                const lower = char.toLowerCase();
+                return englishToHebrew[lower] || char;
+            }).join('');
+        }
+        
+        function copyToClipboard() {
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            
+            if (!output.value.trim()) {
+                status.textContent = 'Nothing to copy. Convert some text first.';
+                return;
+            }
+            
+            output.select();
+            document.execCommand('copy');
+            status.textContent = '📋 Copied to clipboard!';
+        }
+        
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('output').value = '';
+            document.getElementById('status').textContent = '';
+            document.getElementById('detectionInfo').textContent = '';
+        }
+        
+        // Auto-convert as user types (optional - you can remove this if you prefer manual conversion)
+        document.getElementById('input').addEventListener('input', function() {
+            if (this.value.trim()) {
+                convertText();
+            }
+        });
+    </script>
+</body>
+</html>
